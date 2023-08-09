@@ -70,8 +70,28 @@ func (r *Repository) GetUser(tx *sql.Tx, filter entity.User) (*entity.User, erro
 	return &user, nil
 }
 
-func (r *Repository) UpdateUser() (*entity.User, error) {
-	return nil, nil
+func (r *Repository) UpdateUser(user entity.User) (sql.Result, error) {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Commit()
+
+	result, err := sq.StatementBuilder.Update("users").
+		SetMap(sq.Eq{
+			"username":     user.Username,
+			"access_level": user.AccessLevel,
+			"status":       user.Status,
+			"updated_at":   user.UpdatedAt,
+		}).
+		Where(sq.Eq{"id": user.ID}).
+		PlaceholderFormat(sq.Dollar).
+		RunWith(tx).Exec()
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	return result, nil
 }
 
 func (r *Repository) CreateUser(user entity.User) (*entity.User, error) {

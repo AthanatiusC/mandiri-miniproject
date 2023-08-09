@@ -53,7 +53,27 @@ func (c *Controller) UpdateUser(gctx *gin.Context) {
 	decoder := json.NewDecoder(gctx.Request.Body)
 	decoder.Decode(&request)
 
-	gctx.JSON(http.StatusOK, request)
+	stringLevel, err := c.JWTGetClaimValue(gctx, "level")
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
+		return
+	}
+	accessLevel, _ := strconv.Atoi(stringLevel)
+
+	requestUserID := gctx.Param("id")
+	userID, err := strconv.Atoi(requestUserID)
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
+		return
+	}
+
+	response, err := c.Service.UpdateUsers(accessLevel, int64(userID), request)
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
+		return
+	}
+
+	gctx.JSON(http.StatusOK, response)
 }
 
 func (c *Controller) CreateUser(gctx *gin.Context) {
@@ -64,7 +84,7 @@ func (c *Controller) CreateUser(gctx *gin.Context) {
 		return
 	}
 
-	stringLevel, err := c.JWTGetClaimValue(gctx, "access_level")
+	stringLevel, err := c.JWTGetClaimValue(gctx, "level")
 	if err != nil {
 		helper.HandleErrorResponse(gctx, err)
 		return
@@ -88,7 +108,7 @@ func (c *Controller) DeleteUser(gctx *gin.Context) {
 		return
 	}
 
-	stringLevel, err := c.JWTGetClaimValue(gctx, "access_level")
+	stringLevel, err := c.JWTGetClaimValue(gctx, "levl")
 	if err != nil {
 		helper.HandleErrorResponse(gctx, err)
 		return
