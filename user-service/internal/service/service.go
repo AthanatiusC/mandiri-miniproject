@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/AthanatiusC/mandiri-miniproject/user-service/entity"
 	"github.com/AthanatiusC/mandiri-miniproject/user-service/model"
@@ -58,8 +59,60 @@ func (s *Service) GetUsers(accessLevel int, request model.UserRequest) (*model.R
 	), nil
 }
 
-func (s *Service) UpdateUsers() (*model.Response, error) {
-	return nil, nil
+func (s *Service) UpdateUsers(accessLevel int, userID int64, request model.UserRequest) (*model.Response, error) {
+	var response model.Response
+	tx, err := s.Repository.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Commit()
+
+	user, _ := s.Repository.GetUser(tx, entity.User{ID: int64(userID)})
+	if user == nil {
+		return response.Construct(
+			http.StatusBadRequest,
+			"user not found",
+			nil,
+		), nil
+	}
+
+	fmt.Println(accessLevel > int(user.AccessLevel))
+	if accessLevel > int(user.AccessLevel) {
+		return response.Construct(
+			http.StatusUnauthorized,
+			"insufficent access level",
+			nil,
+		), nil
+	}
+
+	if request.Username != "" && user.Username != request.Username {
+		user, _ := s.Repository.GetUser(tx, entity.User{Username: request.Username})
+		if user != nil {
+			return response.Construct(
+				http.StatusBadRequest,
+				"username already exist",
+				nil,
+			), nil
+		}
+	}
+
+	userModel := entity.User{
+		ID:          int64(userID),
+		Username:    user.Username,
+		AccessLevel: user.AccessLevel,
+		Status:      user.Status,
+		UpdatedAt:   time.Now(),
+	}
+
+	result, err := s.Repository.UpdateUser(userModel)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, _ := result.RowsAffected()
+	return &model.Response{
+		Message: fmt.Sprintf("%d user with id %d has been updated", rows, userID),
+	}, nil
 }
 
 func (s *Service) CreateUsers(accessLevel int, request model.UserRequest) (*model.Response, error) {
@@ -70,7 +123,7 @@ func (s *Service) CreateUsers(accessLevel int, request model.UserRequest) (*mode
 	}
 	defer tx.Commit()
 
-	if accessLevel > int(request.AccessLevel) {
+	if accessLevel >= int(request.AccessLevel) {
 		return response.Construct(
 			http.StatusUnauthorized,
 			"insufficent access level",
@@ -130,7 +183,7 @@ func (s *Service) DeleteUsers(accessLevel int, userID int) (*model.Response, err
 		), nil
 	}
 
-	if accessLevel <= int(user.AccessLevel) {
+	if accessLevel >= int(user.AccessLevel) {
 		return response.Construct(
 			http.StatusBadRequest,
 			"insufficent access level",
