@@ -6,9 +6,10 @@ import (
 
 type UserRequest struct {
 	ID          int64  `json:"id"`
-	Username    string `json:"username" binding:"required"`
-	AccessLevel int64  `json:"access_level" binding:"required"`
+	Username    string `json:"username"`
+	AccessLevel int64  `json:"access_level"`
 	Status      string `json:"status"`
+	Pagination  *Pagination
 }
 
 type UserResponse struct {
@@ -33,6 +34,9 @@ type Pagination struct {
 }
 
 func (Response) Construct(code int, message string, data interface{}) *Response {
+	if code == 0 {
+		code = 200
+	}
 	return &Response{
 		Code:    code,
 		Data:    data,

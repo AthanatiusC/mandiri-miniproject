@@ -25,7 +25,7 @@ func GenerateJWT(user *entity.User) (*string, error) {
 }
 
 func HandleErrorResponse(gctx *gin.Context, err error) {
-	fmt.Printf("[%s%s - %s]Error occured %s\n", gctx.Request.Host, gctx.Request.URL.Path, gctx.ClientIP(), err)
+	fmt.Printf("[%s%s - %s] Error occured %s\n", gctx.Request.Host, gctx.Request.URL.Path, gctx.ClientIP(), err)
 	gctx.JSON(http.StatusInternalServerError, gin.H{
 		"message": err.Error(),
 	})

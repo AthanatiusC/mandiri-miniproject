@@ -18,8 +18,35 @@ func NewRepository(db *sql.DB) *Repository {
 	}
 }
 
-func (r *Repository) GetUsers(tx *sql.Tx, filter entity.User) (*entity.User, error) {
-	return nil, nil
+func (r *Repository) GetUsers(tx *sql.Tx, filter entity.User) (*[]entity.User, error) {
+	qf := CreateQueryFilter(filter)
+	query := sq.StatementBuilder.Select("id, username, access_level, status, updated_at, created_at").From("users").Where(qf).
+		PlaceholderFormat(sq.Dollar).
+		RunWith(tx)
+
+	rows, err := query.Query()
+	var users []entity.User
+	for rows.Next() {
+		var user entity.User
+		err := rows.Scan(
+			&user.ID,
+			&user.Username,
+			&user.AccessLevel,
+			&user.Status,
+			&user.UpdatedAt,
+			&user.CreatedAt,
+		)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	return &users, nil
 }
 
 func (r *Repository) GetUser(tx *sql.Tx, filter entity.User) (*entity.User, error) {

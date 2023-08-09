@@ -19,15 +19,7 @@ func NewService(repository *repository.Repository) *Service {
 	}
 }
 
-func (s *Service) GetUsers() (*[]model.Response, error) {
-	return nil, nil
-}
-
-func (s *Service) UpdateUsers() (*model.Response, error) {
-	return nil, nil
-}
-
-func (s *Service) CreateUsers(id int64, request model.UserRequest) (*model.Response, error) {
+func (s *Service) GetUsers(accessLevel int, request model.UserRequest) (*model.Response, error) {
 	var response model.Response
 	tx, err := s.Repository.DB.Begin()
 	if err != nil {
@@ -35,15 +27,53 @@ func (s *Service) CreateUsers(id int64, request model.UserRequest) (*model.Respo
 	}
 	defer tx.Commit()
 
-	admin, err := s.Repository.GetUser(tx, entity.User{ID: id})
+	users, err := s.Repository.GetUsers(tx, entity.User{
+		ID:          request.ID,
+		Username:    request.Username,
+		AccessLevel: request.AccessLevel,
+		Status:      request.Status,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if admin.AccessLevel > 1 {
+	var userResponses []model.UserResponse
+	for _, user := range *users {
+		if accessLevel <= int(user.AccessLevel) {
+			userResponses = append(userResponses, model.UserResponse{
+				ID:          user.ID,
+				Username:    user.Username,
+				AccessLevel: user.AccessLevel,
+				Status:      user.Status,
+				CreatedAt:   user.CreatedAt,
+				UpdatedAt:   user.UpdatedAt,
+			})
+		}
+	}
+
+	return response.Construct(
+		http.StatusOK,
+		"success",
+		userResponses,
+	), nil
+}
+
+func (s *Service) UpdateUsers() (*model.Response, error) {
+	return nil, nil
+}
+
+func (s *Service) CreateUsers(accessLevel int, request model.UserRequest) (*model.Response, error) {
+	var response model.Response
+	tx, err := s.Repository.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Commit()
+
+	if accessLevel > int(request.AccessLevel) {
 		return response.Construct(
 			http.StatusUnauthorized,
-			"unauthorized",
+			"insufficent access level",
 			nil,
 		), nil
 	}
@@ -83,7 +113,7 @@ func (s *Service) CreateUsers(id int64, request model.UserRequest) (*model.Respo
 	), nil
 }
 
-func (s *Service) DeleteUsers(userID int) (*model.Response, error) {
+func (s *Service) DeleteUsers(accessLevel int, userID int) (*model.Response, error) {
 	var response model.Response
 	tx, err := s.Repository.DB.Begin()
 	if err != nil {
@@ -100,10 +130,10 @@ func (s *Service) DeleteUsers(userID int) (*model.Response, error) {
 		), nil
 	}
 
-	if userID >= 0 {
+	if accessLevel <= int(user.AccessLevel) {
 		return response.Construct(
 			http.StatusBadRequest,
-			"user id cannot be or less than 0",
+			"insufficent access level",
 			nil,
 		), nil
 	}
