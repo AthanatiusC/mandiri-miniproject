@@ -1,30 +1,32 @@
 CREATE TABLE "users" (
-  "id" integer PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "username" varchar,
   "access_level" int,
   "status" varchar,
-  "updated_at" timestamp,
-  "created_at" timestamp
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE "informations" (
-  "id" int PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "access_level" int,
-  "title" string,
-  "content" string
+  "title" varchar,
+  "content" varchar,
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE "authentications" (
-  "id" integer PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "user_id" integer,
   "value" varchar,
   "type" varchar,
-  "updated_at" timestamp,
-  "created_at" timestamp
+  "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE "logs" ( -- for audit purposes
-  "id" int PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "user_id" int,
   "information_id" int,
   "ip_address" varchar,
