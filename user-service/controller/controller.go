@@ -2,10 +2,11 @@ package controller
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/AthanatiusC/mandiri-miniproject/user-service/config"
+	"github.com/AthanatiusC/mandiri-miniproject/user-service/helper"
 	"github.com/AthanatiusC/mandiri-miniproject/user-service/internal/service"
 	"github.com/AthanatiusC/mandiri-miniproject/user-service/model"
 	"github.com/gin-gonic/gin"
@@ -46,28 +47,39 @@ func (c *Controller) CreateUser(gctx *gin.Context) {
 	var request model.UserRequest
 	err := gctx.ShouldBindJSON(&request)
 	if err != nil {
-		gctx.JSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
-		})
+		helper.HandleErrorResponse(gctx, err)
 		return
 	}
 
-	response, err := c.Service.CreateUsers(request)
+	stringID, err := c.JWTGetClaimValue(gctx, "id")
 	if err != nil {
-		fmt.Println("Error occured", err)
-		gctx.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
-		})
+		helper.HandleErrorResponse(gctx, err)
+		return
+	}
+	id, _ := strconv.Atoi(stringID)
+
+	response, err := c.Service.CreateUsers(int64(id), request)
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
 		return
 	}
 
-	gctx.JSON(http.StatusOK, response)
+	gctx.JSON(response.Code, response)
 }
 
 func (c *Controller) DeleteUser(gctx *gin.Context) {
-	var request model.UserRequest
-	decoder := json.NewDecoder(gctx.Request.Body)
-	decoder.Decode(&request)
+	requestUserID := gctx.Param("id")
+	userID, err := strconv.Atoi(requestUserID)
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
+		return
+	}
 
-	gctx.JSON(http.StatusOK, request)
+	response, err := c.Service.DeleteUsers(userID)
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
+		return
+	}
+
+	gctx.JSON(response.Code, response)
 }

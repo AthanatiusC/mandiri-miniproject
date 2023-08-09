@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 
-	"github.com/AthanatiusC/mandiri-miniproject/user-service/model"
+	"github.com/AthanatiusC/mandiri-miniproject/user-service/entity"
 	sq "github.com/Masterminds/squirrel"
 	_ "github.com/lib/pq"
 )
@@ -18,16 +18,16 @@ func NewRepository(db *sql.DB) *Repository {
 	}
 }
 
-func (r *Repository) GetUsers(tx *sql.Tx, filter model.User) (*model.User, error) {
+func (r *Repository) GetUsers(tx *sql.Tx, filter entity.User) (*entity.User, error) {
 	return nil, nil
 }
 
-func (r *Repository) GetUserByUsername(tx *sql.Tx, username string) (*model.User, error) {
-	defer tx.Commit()
-	query := sq.StatementBuilder.Select("id, username, access_level, status, updated_at, created_at").From("users").Where(sq.Eq{"username": username}).
+func (r *Repository) GetUser(tx *sql.Tx, filter entity.User) (*entity.User, error) {
+	qf := CreateQueryFilter(filter)
+	query := sq.StatementBuilder.Select("id, username, access_level, status, updated_at, created_at").From("users").Where(qf).
 		PlaceholderFormat(sq.Dollar).
 		RunWith(tx)
-	var user model.User
+	var user entity.User
 	err := query.QueryRow().Scan(
 		&user.ID,
 		&user.Username,
@@ -43,34 +43,40 @@ func (r *Repository) GetUserByUsername(tx *sql.Tx, username string) (*model.User
 	return &user, nil
 }
 
-func (r *Repository) UpdateUser() (*model.User, error) {
+func (r *Repository) UpdateUser() (*entity.User, error) {
 	return nil, nil
 }
 
-func (r *Repository) CreateUser(tx *sql.Tx, user model.User) (*model.User, error) {
+func (r *Repository) CreateUser(user entity.User) (*entity.User, error) {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
 	defer tx.Commit()
+
 	query := sq.StatementBuilder.Insert("users").Columns(
 		"username",
 		"access_level",
 		"status",
-		"updated_at",
-		"created_at",
 	).Values(
 		user.Username,
 		user.AccessLevel,
 		user.Status,
-		user.UpdatedAt,
-		user.CreatedAt,
-	).Suffix("RETURNING id").
+	).Suffix("RETURNING id, updated_at, created_at").
 		PlaceholderFormat(sq.Dollar).
 		RunWith(tx)
-	err := query.QueryRow().Scan(&user.ID)
+
+	err = query.QueryRow().Scan(
+		&user.ID,
+		&user.UpdatedAt,
+		&user.CreatedAt,
+	)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
-	return &model.User{
+	return &entity.User{
 		ID:          user.ID,
 		Username:    user.Username,
 		AccessLevel: user.AccessLevel,
@@ -80,6 +86,37 @@ func (r *Repository) CreateUser(tx *sql.Tx, user model.User) (*model.User, error
 	}, nil
 }
 
-func (r *Repository) DeleteUser() (*model.User, error) {
-	return nil, nil
+func (r *Repository) DeleteUser(id int64) (sql.Result, error) {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Commit()
+
+	result, err := sq.StatementBuilder.Delete("users").Where(sq.Eq{"id": id}).
+		PlaceholderFormat(sq.Dollar).
+		RunWith(tx).Exec()
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func CreateQueryFilter(filter entity.User) sq.Eq {
+	queryFilter := make(sq.Eq)
+	if filter.ID != 0 {
+		queryFilter["id"] = filter.ID
+	}
+	if filter.Username != "" {
+		queryFilter["username"] = filter.Username
+	}
+	if filter.AccessLevel != 0 {
+		queryFilter["access_level"] = filter.AccessLevel
+	}
+	if filter.Status != "" {
+		queryFilter["status"] = filter.Status
+	}
+	return queryFilter
 }

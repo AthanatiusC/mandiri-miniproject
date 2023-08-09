@@ -3,11 +3,11 @@ package helper
 import (
 	"testing"
 
-	"github.com/AthanatiusC/mandiri-miniproject/user-service/model"
+	"github.com/AthanatiusC/mandiri-miniproject/user-service/entity"
 )
 
 func TestGenerateJWT(t *testing.T) {
-	token, err := GenerateJWT(&model.User{
+	token, err := GenerateJWT(&entity.User{
 		ID:          1,
 		Username:    "username",
 		AccessLevel: 1,
