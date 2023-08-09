@@ -1,0 +1,12 @@
+database:
+    host: rosie.db.elephantsql.com
+    port: 5432
+    user: vhcgpwdz
+    database: vhcgpwdz
+
+secret:
+    jwt: mandiri
+    database: r1wpLpIysUjonEdv6iwvGwk4wpKWrKYp
+
+server:
+    port: 3000
