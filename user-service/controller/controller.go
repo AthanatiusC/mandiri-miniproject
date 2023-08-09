@@ -26,13 +26,26 @@ func NewController(config *config.Config, service *service.Service) *Controller 
 
 func (c *Controller) GetUsers(gctx *gin.Context) {
 	var request model.UserRequest
-	gctx.ShouldBindJSON(&request)
-	if request.ID != 0 {
-		gctx.JSON(http.StatusOK, request)
+	err := gctx.ShouldBindJSON(&request)
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
 		return
 	}
 
-	gctx.JSON(http.StatusOK, request)
+	stringLevel, err := c.JWTGetClaimValue(gctx, "level")
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
+		return
+	}
+	accessLevel, _ := strconv.Atoi(stringLevel)
+
+	response, err := c.Service.GetUsers(accessLevel, request)
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
+		return
+	}
+
+	gctx.JSON(http.StatusOK, response)
 }
 
 func (c *Controller) UpdateUser(gctx *gin.Context) {
@@ -51,14 +64,14 @@ func (c *Controller) CreateUser(gctx *gin.Context) {
 		return
 	}
 
-	stringID, err := c.JWTGetClaimValue(gctx, "id")
+	stringLevel, err := c.JWTGetClaimValue(gctx, "access_level")
 	if err != nil {
 		helper.HandleErrorResponse(gctx, err)
 		return
 	}
-	id, _ := strconv.Atoi(stringID)
+	accessLevel, _ := strconv.Atoi(stringLevel)
 
-	response, err := c.Service.CreateUsers(int64(id), request)
+	response, err := c.Service.CreateUsers(accessLevel, request)
 	if err != nil {
 		helper.HandleErrorResponse(gctx, err)
 		return
@@ -75,7 +88,14 @@ func (c *Controller) DeleteUser(gctx *gin.Context) {
 		return
 	}
 
-	response, err := c.Service.DeleteUsers(userID)
+	stringLevel, err := c.JWTGetClaimValue(gctx, "access_level")
+	if err != nil {
+		helper.HandleErrorResponse(gctx, err)
+		return
+	}
+	accessLevel, _ := strconv.Atoi(stringLevel)
+
+	response, err := c.Service.DeleteUsers(accessLevel, userID)
 	if err != nil {
 		helper.HandleErrorResponse(gctx, err)
 		return
