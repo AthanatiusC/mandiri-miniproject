@@ -46,3 +46,25 @@ func (c *Controller) JWTMiddleware(gctx *gin.Context) {
 		gctx.Next()
 	}
 }
+
+func (c *Controller) JWTGetClaimValue(gctx *gin.Context, key string) (string, error) {
+	auth, err := extractBearerAuth(gctx.GetHeader("Authorization"))
+	if err != nil {
+		return "", err
+	}
+	token, err := jwt.Parse(auth, func(token *jwt.Token) (interface{}, error) {
+		if _, OK := token.Method.(*jwt.SigningMethodHMAC); !OK {
+			return nil, errors.New("bad signed method received")
+		}
+		return []byte(c.Config.SecretConfig.JWT), nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	if token.Valid {
+		claims := token.Claims.(jwt.MapClaims)[key].(string)
+		return claims, nil
+	}
+	return "", nil
+}
